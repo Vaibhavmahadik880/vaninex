@@ -5,7 +5,7 @@ import {
   User,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { getAuthInstance, getDbInstance } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { readString } from "@/lib/firestoreData";
 
 export interface UserData extends User {
@@ -23,8 +23,7 @@ interface AuthStore {
   initializeAuth: () => () => void;
   signOut: () => Promise<void>;
 }
-const auth = getAuthInstance();
-const db = getDbInstance();
+
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   role: null,
