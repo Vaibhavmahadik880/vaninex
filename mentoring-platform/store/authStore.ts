@@ -6,6 +6,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { readString } from "@/lib/firestoreData";
 
 export interface UserData extends User {
   role?: "mentor" | "mentee" | "admin";
@@ -19,7 +20,7 @@ interface AuthStore {
   setUser: (user: UserData | null) => void;
   setRole: (role: "mentor" | "mentee" | "admin" | null) => void;
   setLoading: (loading: boolean) => void;
-  initializeAuth: () => void;
+  initializeAuth: () => () => void;
   signOut: () => Promise<void>;
 }
 
@@ -39,9 +40,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
           const userData = userDoc.data();
           const userRole =
-            (userData?.role as "mentor" | "mentee" | "admin") || "mentee";
+            userData?.role === "mentor" || userData?.role === "admin"
+              ? userData.role
+              : "mentee";
           const fullName =
-            userData?.fullName || firebaseUser.displayName || "User";
+            readString(userData?.fullName) ||
+            firebaseUser.displayName ||
+            "User";
 
           set({
             user: { ...firebaseUser, role: userRole, fullName } as UserData,

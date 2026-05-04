@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 import { UserProfile } from "@/hooks/useFetchUsers";
 import { usePairing } from "@/hooks/usePairing";
 import { motion } from "framer-motion";
@@ -11,17 +12,24 @@ interface AdminPairingProps {
   loading: boolean;
 }
 
+type PairingFormValues = {
+  mentorId: string;
+  menteeId: string;
+};
+
 export default function AdminPairing({
   mentors,
   mentees,
   loading,
 }: AdminPairingProps) {
-  const [selectedMentor, setSelectedMentor] = useState<UserProfile | null>(
-    null,
-  );
-  const [selectedMentee, setSelectedMentee] = useState<UserProfile | null>(
-    null,
-  );
+  const { register, handleSubmit, reset, control } = useForm<PairingFormValues>({
+    defaultValues: {
+      mentorId: "",
+      menteeId: "",
+    },
+  });
+  const selectedMentorId = useWatch({ control, name: "mentorId" });
+  const selectedMenteeId = useWatch({ control, name: "menteeId" });
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const {
@@ -30,7 +38,10 @@ export default function AdminPairing({
     loading: pairingLoading,
   } = usePairing();
 
-  const handlePair = async () => {
+  const handlePair: SubmitHandler<PairingFormValues> = async (formData) => {
+    const selectedMentor = mentors.find((m) => m.id === formData.mentorId);
+    const selectedMentee = mentees.find((m) => m.id === formData.menteeId);
+
     if (!selectedMentor || !selectedMentee) {
       setErrorMessage("Please select both a mentor and mentee");
       return;
@@ -46,9 +57,7 @@ export default function AdminPairing({
 
     if (result.success) {
       setSuccessMessage(result.message);
-      setSelectedMentor(null);
-      setSelectedMentee(null);
-      // Refresh would happen via parent component
+      reset();
     } else {
       setErrorMessage(result.error || result.message);
     }
@@ -66,7 +75,6 @@ export default function AdminPairing({
     }
   };
 
-  // Get currently paired mentees for each mentor
   const getPairedMentees = (mentor: UserProfile) => {
     return mentees.filter((m) => mentor.menteeIds?.includes(m.id));
   };
@@ -81,14 +89,13 @@ export default function AdminPairing({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Messages */}
       {successMessage && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-800"
         >
-          ✅ {successMessage}
+          {successMessage}
         </motion.div>
       )}
 
@@ -98,28 +105,25 @@ export default function AdminPairing({
           animate={{ opacity: 1 }}
           className="bg-red-50 border border-red-200 p-4 rounded-lg text-red-800"
         >
-          ❌ {errorMessage}
+          {errorMessage}
         </motion.div>
       )}
 
-      {/* Pairing Section */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+      <form
+        onSubmit={handleSubmit(handlePair)}
+        className="bg-white p-6 rounded-lg shadow-lg border border-gray-200"
+      >
         <h3 className="text-xl font-bold mb-4 text-gray-800">
           Create New Pairing
         </h3>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
-          {/* Mentor Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Select Mentor
             </label>
             <select
-              value={selectedMentor?.id || ""}
-              onChange={(e) => {
-                const mentor = mentors.find((m) => m.id === e.target.value);
-                setSelectedMentor(mentor || null);
-              }}
+              {...register("mentorId")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="">-- Choose Mentor --</option>
@@ -133,17 +137,12 @@ export default function AdminPairing({
             </select>
           </div>
 
-          {/* Mentee Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Select Mentee
             </label>
             <select
-              value={selectedMentee?.id || ""}
-              onChange={(e) => {
-                const mentee = mentees.find((m) => m.id === e.target.value);
-                setSelectedMentee(mentee || null);
-              }}
+              {...register("menteeId")}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">-- Choose Mentee --</option>
@@ -159,15 +158,14 @@ export default function AdminPairing({
         </div>
 
         <button
-          onClick={handlePair}
-          disabled={pairingLoading || !selectedMentor || !selectedMentee}
+          type="submit"
+          disabled={pairingLoading || !selectedMentorId || !selectedMenteeId}
           className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
         >
           {pairingLoading ? "Pairing..." : "Create Pairing"}
         </button>
-      </div>
+      </form>
 
-      {/* Current Pairings */}
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <h3 className="text-xl font-bold mb-4 text-gray-800">
           Current Pairings
@@ -202,12 +200,13 @@ export default function AdminPairing({
                             key={mentee.id}
                             className="text-sm text-blue-700 ml-2"
                           >
-                            → {mentee.email}
+                            - {mentee.email}
                           </p>
                         ))}
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() =>
                         handleRemovePairing(mentor, pairedMentees[0])
                       }

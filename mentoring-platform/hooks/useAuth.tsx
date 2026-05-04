@@ -1,71 +1,26 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-  useContext,
-  createContext,
-  ReactNode,
-} from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { ReactNode, useEffect } from "react";
+import { User } from "firebase/auth";
+import { useAuthStore } from "@/store/authStore";
 
 export interface UserData extends User {
   role?: "mentor" | "mentee" | "admin";
   fullName?: string;
 }
 
-interface AuthContextType {
-  user: UserData | null;
-  loading: boolean;
-  role: "mentor" | "mentee" | "admin" | null;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<"mentor" | "mentee" | "admin" | null>(null);
+  const initializeAuth = useAuthStore((state) => state.initializeAuth);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          const userData = userDoc.data();
-          const userRole = userData?.role || "mentee";
-          const fullName =
-            userData?.fullName || firebaseUser.displayName || "User";
+  useEffect(() => initializeAuth(), [initializeAuth]);
 
-          setUser({ ...firebaseUser, role: userRole, fullName } as UserData);
-          setRole(userRole);
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          setUser(firebaseUser as UserData);
-        }
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, loading, role }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <>{children}</>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
+  const role = useAuthStore((state) => state.role);
+
+  return { user, loading, role };
 }

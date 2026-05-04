@@ -1,6 +1,13 @@
 import { create } from "zustand";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  QueryConstraint,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { readDate, readString, readStringArray } from "@/lib/firestoreData";
 
 export interface UserProfile {
   id: string;
@@ -13,10 +20,12 @@ export interface UserProfile {
 }
 
 interface UsersStore {
+  users: UserProfile[];
   mentors: UserProfile[];
   mentees: UserProfile[];
   loading: boolean;
   error: string | null;
+  fetchUsers: (role?: string, filters?: QueryConstraint[]) => Promise<void>;
   fetchMentors: () => Promise<void>;
   fetchMentees: () => Promise<void>;
   fetchAllUsers: () => Promise<void>;
@@ -25,6 +34,7 @@ interface UsersStore {
 }
 
 export const useUsersStore = create<UsersStore>((set) => ({
+  users: [],
   mentors: [],
   mentees: [],
   loading: false,
@@ -33,6 +43,54 @@ export const useUsersStore = create<UsersStore>((set) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
 
+  fetchUsers: async (role?: string, filters?: QueryConstraint[]) => {
+    set({ loading: true, error: null });
+    try {
+      const constraints = [
+        ...(role ? [where("role", "==", role)] : []),
+        ...(filters || []),
+      ];
+      const q =
+        constraints.length > 0
+          ? query(collection(db, "users"), ...constraints)
+          : query(collection(db, "users"));
+      const snapshot = await getDocs(q);
+      const userList: UserProfile[] = snapshot.docs.map((doc) => {
+        const data = doc.data() as Record<string, unknown>;
+        const email = readString(data.email);
+        const fullName =
+          readString(data.fullName) || email.split("@")[0] || "User";
+        const userRole =
+          data.role === "mentor" || data.role === "admin" ? data.role : "mentee";
+
+        return {
+          id: doc.id,
+          email,
+          fullName,
+          role: userRole,
+          createdAt: readDate(data.createdAt),
+          menteeIds: readStringArray(data.menteeIds),
+          mentorId:
+            typeof data.mentorId === "string" || data.mentorId === null
+              ? data.mentorId
+              : null,
+        };
+      });
+
+      set({
+        users: userList,
+        ...(role === "mentor" ? { mentors: userList } : {}),
+        ...(role === "mentee" ? { mentees: userList } : {}),
+      });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      set({ error: errorMessage });
+      console.error("Error fetching users:", err);
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   fetchMentors: async () => {
     set({ loading: true, error: null });
     try {
@@ -40,17 +98,18 @@ export const useUsersStore = create<UsersStore>((set) => ({
       const snapshot = await getDocs(q);
       const mentorList: UserProfile[] = snapshot.docs.map((doc) => {
         const data = doc.data() as Record<string, unknown>;
+        const email = readString(data.email);
         return {
           id: doc.id,
-          email: (data.email as string) || "",
-          fullName:
-            (data.fullName as string) ||
-            (data.email as string)?.split("@")[0] ||
-            "User",
+          email,
+          fullName: readString(data.fullName) || email.split("@")[0] || "User",
           role: (data.role as "mentor") || "mentor",
-          createdAt: (data.createdAt as any)?.toDate() || new Date(),
-          menteeIds: (data.menteeIds as string[]) || [],
-          mentorId: (data.mentorId as string | null) || null,
+          createdAt: readDate(data.createdAt),
+          menteeIds: readStringArray(data.menteeIds),
+          mentorId:
+            typeof data.mentorId === "string" || data.mentorId === null
+              ? data.mentorId
+              : null,
         };
       });
       set({ mentors: mentorList });
@@ -70,17 +129,18 @@ export const useUsersStore = create<UsersStore>((set) => ({
       const snapshot = await getDocs(q);
       const menteeList: UserProfile[] = snapshot.docs.map((doc) => {
         const data = doc.data() as Record<string, unknown>;
+        const email = readString(data.email);
         return {
           id: doc.id,
-          email: (data.email as string) || "",
-          fullName:
-            (data.fullName as string) ||
-            (data.email as string)?.split("@")[0] ||
-            "User",
+          email,
+          fullName: readString(data.fullName) || email.split("@")[0] || "User",
           role: (data.role as "mentee") || "mentee",
-          createdAt: (data.createdAt as any)?.toDate() || new Date(),
-          menteeIds: (data.menteeIds as string[]) || [],
-          mentorId: (data.mentorId as string | null) || null,
+          createdAt: readDate(data.createdAt),
+          menteeIds: readStringArray(data.menteeIds),
+          mentorId:
+            typeof data.mentorId === "string" || data.mentorId === null
+              ? data.mentorId
+              : null,
         };
       });
       set({ mentees: menteeList });
@@ -105,17 +165,19 @@ export const useUsersStore = create<UsersStore>((set) => ({
           const snapshot = await getDocs(q);
           const mentorList: UserProfile[] = snapshot.docs.map((doc) => {
             const data = doc.data() as Record<string, unknown>;
+            const email = readString(data.email);
             return {
               id: doc.id,
-              email: (data.email as string) || "",
+              email,
               fullName:
-                (data.fullName as string) ||
-                (data.email as string)?.split("@")[0] ||
-                "User",
+                readString(data.fullName) || email.split("@")[0] || "User",
               role: (data.role as "mentor") || "mentor",
-              createdAt: (data.createdAt as any)?.toDate() || new Date(),
-              menteeIds: (data.menteeIds as string[]) || [],
-              mentorId: (data.mentorId as string | null) || null,
+              createdAt: readDate(data.createdAt),
+              menteeIds: readStringArray(data.menteeIds),
+              mentorId:
+                typeof data.mentorId === "string" || data.mentorId === null
+                  ? data.mentorId
+                  : null,
             };
           });
           set({ mentors: mentorList });
@@ -128,17 +190,19 @@ export const useUsersStore = create<UsersStore>((set) => ({
           const snapshot = await getDocs(q);
           const menteeList: UserProfile[] = snapshot.docs.map((doc) => {
             const data = doc.data() as Record<string, unknown>;
+            const email = readString(data.email);
             return {
               id: doc.id,
-              email: (data.email as string) || "",
+              email,
               fullName:
-                (data.fullName as string) ||
-                (data.email as string)?.split("@")[0] ||
-                "User",
+                readString(data.fullName) || email.split("@")[0] || "User",
               role: (data.role as "mentee") || "mentee",
-              createdAt: (data.createdAt as any)?.toDate() || new Date(),
-              menteeIds: (data.menteeIds as string[]) || [],
-              mentorId: (data.mentorId as string | null) || null,
+              createdAt: readDate(data.createdAt),
+              menteeIds: readStringArray(data.menteeIds),
+              mentorId:
+                typeof data.mentorId === "string" || data.mentorId === null
+                  ? data.mentorId
+                  : null,
             };
           });
           set({ mentees: menteeList });

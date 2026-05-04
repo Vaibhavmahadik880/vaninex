@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -12,59 +13,70 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
+type AuthFormValues = {
+  email: string;
+  password: string;
+  fullName: string;
+  role: "mentor" | "mentee";
+};
+
 export default function AuthForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"mentor" | "mentee" | "admin">("mentee");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [adminSecret, setAdminSecret] = useState("");
-  const [showAdminSecret, setShowAdminSecret] = useState(false);
   const router = useRouter();
   const googleProvider = new GoogleAuthProvider();
+  const { register, handleSubmit } = useForm<AuthFormValues>({
+    defaultValues: {
+      email: "",
+      password: "",
+      fullName: "",
+      role: "mentee",
+    },
+  });
 
-  // Admin secret - set this to something secure in .env
-  const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || "admin123";
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAuth: SubmitHandler<AuthFormValues> = async (formData) => {
     setError("");
     setLoading(true);
 
     try {
       if (isLogin) {
-        // ✅ Login
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password,
+        );
       } else {
-        // ✅ Register with email
-        if (!fullName.trim()) {
+        if (!formData.fullName.trim()) {
           throw new Error("Please enter your full name");
         }
 
         const userCredential = await createUserWithEmailAndPassword(
           auth,
-          email,
-          password,
+          formData.email,
+          formData.password,
         );
         const user = userCredential.user;
 
-        // Update Firebase Auth profile
         await updateProfile(user, {
-          displayName: fullName,
+          displayName: formData.fullName,
         });
 
-        // 💾 Store user in Firestore
-        const userData: any = {
-          email,
-          fullName,
-          role,
+        const userData: {
+          email: string;
+          fullName: string;
+          role: "mentor" | "mentee";
+          createdAt: Date;
+          menteeIds?: string[];
+          mentorId?: string | null;
+        } = {
+          email: formData.email,
+          fullName: formData.fullName,
+          role: formData.role,
           createdAt: new Date(),
         };
 
-        // Add role-specific fields
-        if (role === "mentor") {
+        if (formData.role === "mentor") {
           userData.menteeIds = [];
         } else {
           userData.mentorId = null;
@@ -73,10 +85,9 @@ export default function AuthForm() {
         await setDoc(doc(db, "users", user.uid), userData);
       }
 
-      // 🔄 Redirect based on role (will be fetched in useAuth)
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -89,13 +100,9 @@ export default function AuthForm() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      // Check if user exists in Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
 
       if (!userDoc.exists()) {
-        // First time Google sign-in - create user profile
-        // Default to mentee role
         const userData = {
           email: user.email,
           fullName: user.displayName || user.email?.split("@")[0] || "User",
@@ -108,8 +115,8 @@ export default function AuthForm() {
       }
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
     } finally {
       setLoading(false);
     }
@@ -122,12 +129,11 @@ export default function AuthForm() {
           {isLogin ? "Login" : "Register"}
         </h1>
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleSubmit(handleAuth)} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...register("email", { required: true })}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -136,8 +142,7 @@ export default function AuthForm() {
             <input
               type="text"
               placeholder="Full Name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              {...register("fullName", { required: !isLogin })}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -146,16 +151,14 @@ export default function AuthForm() {
           <input
             type="password"
             placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            {...register("password", { required: true })}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
           {!isLogin && (
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "mentor" | "mentee")}
+              {...register("role", { required: true })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="mentee">Mentee</option>
@@ -172,7 +175,6 @@ export default function AuthForm() {
           </button>
         </form>
 
-        {/* Google Sign-In Button */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { useScheduling } from "@/hooks/useScheduling";
 import { UserProfile } from "@/hooks/useFetchUsers";
+import { readDate } from "@/lib/firestoreData";
 import { motion } from "framer-motion";
 
 interface CallSchedulingProps {
   currentUserId: string;
   currentUserRole: "mentor" | "mentee" | "admin";
   pairedUser?: UserProfile | null;
+}
+
+type ScheduleFormValues = {
+  scheduledDate: string;
+  scheduledTime: string;
+  duration: number;
+  notes: string;
+};
+
+function isScheduleReaderRole(
+  role: "mentor" | "mentee" | "admin",
+): role is "mentor" | "mentee" {
+  return role === "mentor" || role === "mentee";
 }
 
 export default function CallScheduling({
@@ -22,25 +37,43 @@ export default function CallScheduling({
     fetchSchedules,
     createSchedule,
     cancelSchedule,
+    clearSchedules,
   } = useScheduling();
+  const { register, handleSubmit, reset } = useForm<ScheduleFormValues>({
+    defaultValues: {
+      scheduledDate: "",
+      scheduledTime: "",
+      duration: 30,
+      notes: "",
+    },
+  });
 
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [duration, setDuration] = useState(30);
-  const [notes, setNotes] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (pairedUser) {
-      // Fetch schedules for the current user
+    if (pairedUser && isScheduleReaderRole(currentUserRole)) {
       fetchSchedules(currentUserId, currentUserRole);
+    } else {
+      clearSchedules();
     }
-  }, [currentUserId, currentUserRole, pairedUser, fetchSchedules]);
+  }, [
+    currentUserId,
+    currentUserRole,
+    pairedUser,
+    fetchSchedules,
+    clearSchedules,
+  ]);
 
-  const handleScheduleCall = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const refreshSchedules = async () => {
+    if (isScheduleReaderRole(currentUserRole)) {
+      await fetchSchedules(currentUserId, currentUserRole);
+    }
+  };
+
+  const handleScheduleCall: SubmitHandler<ScheduleFormValues> = async (
+    formData,
+  ) => {
     setErrorMessage("");
     setSuccessMessage("");
 
@@ -49,15 +82,15 @@ export default function CallScheduling({
       return;
     }
 
-    if (!scheduledDate || !scheduledTime) {
+    if (!formData.scheduledDate || !formData.scheduledTime) {
       setErrorMessage("Please select date and time");
       return;
     }
 
-    setLoading(true);
-
     try {
-      const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`);
+      const scheduledAt = new Date(
+        `${formData.scheduledDate}T${formData.scheduledTime}`,
+      );
 
       const mentorId =
         currentUserRole === "mentor" ? currentUserId : pairedUser.id;
@@ -68,19 +101,19 @@ export default function CallScheduling({
         mentorId,
         menteeId,
         scheduledAt,
-        duration,
-        notes,
+        formData.duration,
+        formData.notes,
       );
 
       if (result.success) {
-        setSuccessMessage("✅ Call scheduled successfully!");
-        setScheduledDate("");
-        setScheduledTime("");
-        setDuration(30);
-        setNotes("");
-
-        // Refresh schedules
-        await fetchSchedules(currentUserId, currentUserRole);
+        setSuccessMessage("Call scheduled successfully!");
+        reset({
+          scheduledDate: "",
+          scheduledTime: "",
+          duration: 30,
+          notes: "",
+        });
+        await refreshSchedules();
       } else {
         setErrorMessage(result.error || "Failed to schedule call");
       }
@@ -88,8 +121,6 @@ export default function CallScheduling({
       const message =
         error instanceof Error ? error.message : "Failed to schedule call";
       setErrorMessage(message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -98,7 +129,7 @@ export default function CallScheduling({
       const result = await cancelSchedule(scheduleId);
       if (result.success) {
         setSuccessMessage("Schedule cancelled");
-        await fetchSchedules(currentUserId, currentUserRole);
+        await refreshSchedules();
       } else {
         setErrorMessage(result.error || "Failed to cancel schedule");
       }
@@ -128,7 +159,6 @@ export default function CallScheduling({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Messages */}
       {successMessage && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -149,53 +179,46 @@ export default function CallScheduling({
         </motion.div>
       )}
 
-      {/* Schedule Form - Only for mentors with paired mentees */}
       {isMentorCanSchedule && (
         <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
           <h3 className="text-xl font-bold mb-4 text-gray-800">
             Schedule Call
           </h3>
 
-          <form onSubmit={handleScheduleCall} className="space-y-4">
+          <form onSubmit={handleSubmit(handleScheduleCall)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              {/* Date */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Date
                 </label>
                 <input
                   type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
+                  {...register("scheduledDate", { required: true })}
                   min={new Date().toISOString().split("T")[0]}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
 
-              {/* Time */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Time
                 </label>
                 <input
                   type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
+                  {...register("scheduledTime", { required: true })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
             </div>
 
-            {/* Duration */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Duration (minutes)
               </label>
               <select
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
+                {...register("duration", { valueAsNumber: true })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={15}>15 minutes</option>
@@ -207,14 +230,12 @@ export default function CallScheduling({
               </select>
             </div>
 
-            {/* Notes */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Notes (Optional)
               </label>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                {...register("notes")}
                 placeholder="Add any notes for this call..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
@@ -223,16 +244,15 @@ export default function CallScheduling({
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={schedulesLoading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
             >
-              {loading ? "Scheduling..." : "Schedule Call"}
+              {schedulesLoading ? "Scheduling..." : "Schedule Call"}
             </button>
           </form>
         </div>
       )}
 
-      {/* Schedules List */}
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
         <h3 className="text-xl font-bold mb-4 text-gray-800">
           {currentUserRole === "mentor" ? "Your" : "Scheduled"} Calls
@@ -246,53 +266,57 @@ export default function CallScheduling({
           </p>
         ) : (
           <div className="space-y-3">
-            {schedules.map((schedule) => (
-              <motion.div
-                key={schedule.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">
-                      {/* 📅 {schedule.scheduledAt.toLocaleDateString()} at{" "}
-                      {schedule.scheduledAt.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })} */}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Duration: {schedule.duration} minutes
-                    </p>
-                    {schedule.notes && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Notes: {schedule.notes}
-                      </p>
-                    )}
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadgeColor(
-                      schedule.status,
-                    )}`}
-                  >
-                    {schedule.status}
-                  </span>
-                </div>
+            {schedules.map((schedule) => {
+              const scheduledAt = readDate(schedule.scheduledAt);
 
-                {/* Actions */}
-                {(schedule.status === "scheduled" ||
-                  schedule.status === "ongoing") &&
-                  currentUserRole === "mentor" && (
-                    <button
-                      onClick={() => handleCancelSchedule(schedule.id)}
-                      className="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
+              return (
+                <motion.div
+                  key={schedule.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">
+                        {scheduledAt.toLocaleDateString()} at{" "}
+                        {scheduledAt.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Duration: {schedule.duration} minutes
+                      </p>
+                      {schedule.notes && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Notes: {schedule.notes}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadgeColor(
+                        schedule.status,
+                      )}`}
                     >
-                      Cancel
-                    </button>
-                  )}
-              </motion.div>
-            ))}
+                      {schedule.status}
+                    </span>
+                  </div>
+
+                  {(schedule.status === "scheduled" ||
+                    schedule.status === "ongoing") &&
+                    currentUserRole === "mentor" && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelSchedule(schedule.id)}
+                        className="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

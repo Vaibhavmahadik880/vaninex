@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { readDate, readString } from "@/lib/firestoreData";
 
 export interface CallSchedule {
   id: string;
@@ -48,6 +49,7 @@ interface SchedulingStore {
   cancelSchedule: (
     scheduleId: string,
   ) => Promise<{ success: boolean; message: string; error?: string }>;
+  clearSchedules: () => void;
   clearMessages: () => void;
 }
 
@@ -57,6 +59,7 @@ export const useSchedulingStore = create<SchedulingStore>((set) => ({
   error: null,
   successMessage: null,
 
+  clearSchedules: () => set({ schedules: [] }),
   clearMessages: () => set({ error: null, successMessage: null }),
 
   fetchSchedules: async (userId: string, role: "mentor" | "mentee") => {
@@ -74,13 +77,13 @@ export const useSchedulingStore = create<SchedulingStore>((set) => ({
         const data = doc.data() as Record<string, unknown>;
         return {
           id: doc.id,
-          mentorId: data.mentorId as string,
-          menteeId: data.menteeId as string,
-          scheduledAt: (data.scheduledAt as any)?.toDate() || new Date(),
+          mentorId: readString(data.mentorId),
+          menteeId: readString(data.menteeId),
+          scheduledAt: readDate(data.scheduledAt),
           duration: (data.duration as number) || 30,
           status: (data.status as CallSchedule["status"]) || "scheduled",
-          createdAt: (data.createdAt as any)?.toDate() || new Date(),
-          notes: data.notes as string,
+          createdAt: readDate(data.createdAt),
+          notes: readString(data.notes),
         };
       });
 
@@ -124,8 +127,7 @@ export const useSchedulingStore = create<SchedulingStore>((set) => ({
 
       for (const docSnap of snapshot.docs) {
         const data = docSnap.data() as Record<string, unknown>;
-        const existingStart =
-          (data.scheduledAt as any)?.toDate()?.getTime() || 0;
+        const existingStart = readDate(data.scheduledAt).getTime();
         const existingEnd =
           existingStart + (data.duration as number) * 60 * 1000;
 
