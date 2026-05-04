@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -11,12 +11,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// 🚫 Do not run on server (build/SSR)
-const isBrowser = typeof window !== "undefined";
+// 🔥 Lazy initialization
+function getFirebaseApp() {
+  if (typeof window === "undefined") {
+    throw new Error("Firebase should only be used on client side");
+  }
 
-const app = isBrowser
-  ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
-  : null;
+  return getApps().length ? getApp() : initializeApp(firebaseConfig);
+}
 
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+// ✅ Export SAME TYPE (no null)
+export function getAuthInstance(): Auth {
+  return getAuth(getFirebaseApp());
+}
+
+export function getDbInstance(): Firestore {
+  return getFirestore(getFirebaseApp());
+}

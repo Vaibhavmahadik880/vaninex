@@ -4,12 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFetchUsers } from "@/hooks/useFetchUsers";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useEffect } from "react";
 import MentorList from "@/components/MentorList";
 import MenteeList from "@/components/MenteeList";
 import AdminPairing from "@/components/AdminPairing";
 import CallScheduling from "@/components/CallScheduling";
+import { getAuthInstance } from "@/lib/firebase";
 
 export default function DashboardPage() {
   const { user, role, loading } = useAuth();
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   if (!user) {
     return null;
   }
-
+const auth = getAuthInstance();
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/auth");
