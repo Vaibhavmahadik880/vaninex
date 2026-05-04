@@ -1,7 +1,8 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// 🔥 Replace with your Firebase config
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -11,17 +12,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// ✅ Safe initialization
-function getFirebaseApp() {
-  if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-    console.warn("⚠️ Firebase env variables missing. Skipping initialization.");
-    return null;
-  }
-
-  return getApps().length ? getApp() : initializeApp(firebaseConfig);
-}
-
-const app = getFirebaseApp();
-
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
