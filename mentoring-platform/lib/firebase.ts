@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
+// Firebase config
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
@@ -11,12 +12,19 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-// 🚫 Do not run on server (build/SSR)
 const isBrowser = typeof window !== "undefined";
 
 const app = isBrowser
-  ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
-  : null;
+  ? getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig)
+  : undefined;
 
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+// ✅ Use correct types instead of `any`
+export const auth: Auth = isBrowser
+  ? getAuth(app!)
+  : ({} as unknown as Auth);
+
+export const db: Firestore = isBrowser
+  ? getFirestore(app!)
+  : ({} as unknown as Firestore);
