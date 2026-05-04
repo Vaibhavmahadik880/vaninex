@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { doc, runTransaction } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {  getDbInstance } from "@/lib/firebase";
 
 interface PairingResult {
   success: boolean;
@@ -25,6 +25,7 @@ interface PairingStore {
   clearMessages: () => void;
 }
 
+const db = getDbInstance();
 export const usePairingStore = create<PairingStore>((set) => ({
   loading: false,
   error: null,

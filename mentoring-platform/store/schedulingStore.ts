@@ -10,7 +10,7 @@ import {
   where,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDbInstance } from "@/lib/firebase";
 import { readDate, readString } from "@/lib/firestoreData";
 
 export interface CallSchedule {
@@ -52,7 +52,7 @@ interface SchedulingStore {
   clearSchedules: () => void;
   clearMessages: () => void;
 }
-
+const db = getDbInstance();
 export const useSchedulingStore = create<SchedulingStore>((set) => ({
   schedules: [],
   loading: false,

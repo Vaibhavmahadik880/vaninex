@@ -6,7 +6,7 @@ import {
   where,
   QueryConstraint,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDbInstance } from "@/lib/firebase";
 import { readDate, readString, readStringArray } from "@/lib/firestoreData";
 
 export interface UserProfile {
@@ -32,7 +32,7 @@ interface UsersStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
-
+const db = getDbInstance();
 export const useUsersStore = create<UsersStore>((set) => ({
   users: [],
   mentors: [],
