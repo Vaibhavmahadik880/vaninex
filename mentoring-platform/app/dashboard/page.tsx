@@ -5,37 +5,36 @@ import { useFetchUsers } from "@/hooks/useFetchUsers";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import MentorList from "@/components/MentorList";
 import MenteeList from "@/components/MenteeList";
+import AdminPairing from "@/components/AdminPairing";
+import CallScheduling from "@/components/CallScheduling";
 
 export default function DashboardPage() {
   const { user, role, loading } = useAuth();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
 
   // Fetch users based on role
   const { users: mentors } = useFetchUsers("mentor");
   const { users: mentees } = useFetchUsers("mentee");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Find paired user for non-admin users
+  const pairedMentor =
+    role === "mentee"
+      ? mentors.find((m) => m.menteeIds?.includes(user?.uid || ""))
+      : null;
+  const pairedMentee =
+    role === "mentor" ? mentees.find((m) => m.mentorId === user?.uid) : null;
 
   useEffect(() => {
     // 🔐 Redirect to auth if not logged in
-    if (mounted && !loading && !user) {
+    if (!loading && !user) {
       router.push("/auth");
     }
-  }, [user, loading, router, mounted]);
+  }, [user, loading, router]);
 
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/auth");
-  };
-
-  if (!mounted || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-xl">Loading...</p>
@@ -47,6 +46,11 @@ export default function DashboardPage() {
     return null;
   }
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -54,7 +58,9 @@ export default function DashboardPage() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Mentoring Platform</h1>
-            <p className="text-blue-100">Welcome, {user.fullName || user.email}</p>
+            <p className="text-blue-100">
+              Welcome, {user.fullName || user.email}
+            </p>
           </div>
           <button
             onClick={handleLogout}
@@ -74,7 +80,9 @@ export default function DashboardPage() {
             <p className="mb-2">
               <strong>Name:</strong>
             </p>
-            <p className="text-sm text-blue-100 mb-4">{user.fullName || "User"}</p>
+            <p className="text-sm text-blue-100 mb-4">
+              {user.fullName || "User"}
+            </p>
             <p className="mb-2">
               <strong>Email:</strong>
             </p>
@@ -101,21 +109,52 @@ export default function DashboardPage() {
                 </p>
                 <div className="mt-4 pt-4 border-t border-green-400">
                   <p className="text-xs">
-                    Active Mentees: <span className="font-bold">0</span>
+                    Active Mentees:{" "}
+                    <span className="font-bold">
+                      {mentees.filter((m) => m.mentorId === user?.uid).length}
+                    </span>
+                  </p>
+                  {pairedMentee && (
+                    <p className="text-xs mt-2">
+                      Paired with:{" "}
+                      <span className="font-bold">{pairedMentee.email}</span>
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : role === "mentee" ? (
+              <>
+                <p className="mb-2">
+                  ✅ <strong>Mentee</strong>
+                </p>
+                <p className="text-sm text-green-100">
+                  You can join scheduled calls with your mentor.
+                </p>
+                <div className="mt-4 pt-4 border-t border-green-400">
+                  <p className="text-xs">
+                    Assigned Mentor:{" "}
+                    <span className="font-bold">
+                      {pairedMentor?.email || "None"}
+                    </span>
                   </p>
                 </div>
               </>
             ) : (
               <>
                 <p className="mb-2">
-                  ✅ <strong>Mentee</strong>
+                  ✅ <strong>Admin</strong>
                 </p>
                 <p className="text-sm text-green-100">
-                  You can request a mentor and join scheduled calls.
+                  Manage all pairings and monitor platform activity.
                 </p>
                 <div className="mt-4 pt-4 border-t border-green-400">
                   <p className="text-xs">
-                    Assigned Mentor: <span className="font-bold">None</span>
+                    Total Mentors:{" "}
+                    <span className="font-bold">{mentors.length}</span>
+                  </p>
+                  <p className="text-xs mt-1">
+                    Total Mentees:{" "}
+                    <span className="font-bold">{mentees.length}</span>
                   </p>
                 </div>
               </>
@@ -128,9 +167,10 @@ export default function DashboardPage() {
             <div className="space-y-2 text-sm">
               <p>🟢 Connected to Firebase</p>
               <p>🟢 Authentication Active</p>
-              <p>🟢 Dashboard Ready</p>
+              <p>🟢 Admin Pairing System</p>
+              <p>🟢 Call Scheduling Ready</p>
               <p className="text-xs text-purple-100 mt-4">
-                Phase 3: Dashboard Base
+                Phase 5: Call Scheduling Complete
               </p>
             </div>
           </div>
@@ -162,34 +202,85 @@ export default function DashboardPage() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-2xl font-bold mb-4">📋 Next Steps</h3>
             <div className="space-y-3 text-sm text-gray-700">
-              {role === "mentor" ? (
+              {role === "admin" ? (
                 <>
                   <p>
-                    ✅ <strong>Phase 3:</strong> Dashboard Base - Done!
+                    ✅ <strong>Phase 4:</strong> Admin Pairing System - Active!
                   </p>
                   <p>
-                    ⏳ <strong>Phase 4:</strong> Assign mentees to manage
+                    ✅ <strong>Phase 5:</strong> Call Scheduling - Active!
                   </p>
                   <p>
-                    ⏳ <strong>Phase 5:</strong> Schedule calls with mentees
+                    ⏳ <strong>Phase 6+:</strong> WebRTC calling setup
+                  </p>
+                </>
+              ) : role === "mentor" ? (
+                <>
+                  <p>
+                    ✅ <strong>Phase 4:</strong>{" "}
+                    {pairedMentee
+                      ? "Mentee assigned!"
+                      : "Waiting for pairing..."}
+                  </p>
+                  <p>
+                    ✅ <strong>Phase 5:</strong> Schedule calls with mentee
+                  </p>
+                  <p>
+                    ⏳ <strong>Phase 6+:</strong> Start WebRTC calls
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    ✅ <strong>Phase 3:</strong> Dashboard Base - Done!
+                    ✅ <strong>Phase 4:</strong>{" "}
+                    {pairedMentor
+                      ? "Mentor assigned!"
+                      : "Waiting for pairing..."}
                   </p>
                   <p>
-                    ⏳ <strong>Phase 4:</strong> Request a mentor to pair with
+                    ✅ <strong>Phase 5:</strong> Join scheduled calls
                   </p>
                   <p>
-                    ⏳ <strong>Phase 5:</strong> Schedule calls with your mentor
+                    ⏳ <strong>Phase 6+:</strong> Join WebRTC calls
                   </p>
                 </>
               )}
             </div>
           </div>
         </div>
+
+        {/* PHASE 4: ADMIN PAIRING SYSTEM */}
+        {role === "admin" && (
+          <div className="mt-8 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-lg p-6 border-l-4 border-purple-600">
+            <h2 className="text-3xl font-bold mb-6 text-purple-900">
+              🔗 PHASE 4: Admin Pairing System
+            </h2>
+            <AdminPairing mentors={mentors} mentees={mentees} loading={false} />
+          </div>
+        )}
+
+        {/* PHASE 5: CALL SCHEDULING */}
+        {(role === "mentor" || role === "mentee" || role === "admin") && (
+          <div className="mt-8 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg shadow-lg p-6 border-l-4 border-blue-600">
+            <h2 className="text-3xl font-bold mb-6 text-blue-900">
+              📞 PHASE 5: Call Scheduling
+            </h2>
+            <CallScheduling
+              currentUserId={user.uid}
+              currentUserRole={role as "mentor" | "mentee" | "admin"}
+              pairedUser={
+                role === "mentor"
+                  ? mentees.find((m) => user.uid && m.mentorId === user.uid) ||
+                    null
+                  : role === "mentee"
+                    ? mentors.find(
+                        (m) => user.uid && m.menteeIds?.includes(user.uid),
+                      ) || null
+                    : null
+              }
+            />
+          </div>
+        )}
 
         {/* Feature Roadmap */}
         <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
@@ -206,17 +297,17 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-500">Dashboard</p>
             </div>
             <div className="text-center">
-              <div className="bg-yellow-100 p-4 rounded-lg mb-2">⏳</div>
+              <div className="bg-green-100 p-4 rounded-lg mb-2">✅</div>
               <p className="font-semibold text-sm">Phase 4</p>
               <p className="text-xs text-gray-500">Pairing</p>
             </div>
             <div className="text-center">
-              <div className="bg-gray-100 p-4 rounded-lg mb-2">◻️</div>
+              <div className="bg-green-100 p-4 rounded-lg mb-2">✅</div>
               <p className="font-semibold text-sm">Phase 5</p>
               <p className="text-xs text-gray-500">Scheduling</p>
             </div>
             <div className="text-center">
-              <div className="bg-gray-100 p-4 rounded-lg mb-2">◻️</div>
+              <div className="bg-gray-100 p-4 rounded-lg mb-2">⏳</div>
               <p className="font-semibold text-sm">Phase 6+</p>
               <p className="text-xs text-gray-500">WebRTC</p>
             </div>

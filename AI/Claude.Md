@@ -4,12 +4,12 @@
 
 Build a **production-grade mentoring platform** with:
 
-* Role-based authentication
-* Mentor–mentee pairing
-* Call scheduling
-* Real-time WebRTC calling
-* Call tracking
-* Modern responsive UI
+- Role-based authentication
+- Mentor–mentee pairing
+- Call scheduling
+- Real-time WebRTC calling
+- Call tracking
+- Modern responsive UI
 
 ---
 
@@ -17,10 +17,10 @@ Build a **production-grade mentoring platform** with:
 
 Think of this like **building a house**:
 
-* Foundation → Firebase + Auth
-* Structure → Pairing + Scheduling
-* Wiring → WebRTC + Signaling
-* Finishing → UI + Stability
+- Foundation → Firebase + Auth
+- Structure → Pairing + Scheduling
+- Wiring → WebRTC + Signaling
+- Finishing → UI + Stability
 
 👉 Each phase must be **completed and tested before moving forward**.
 
@@ -30,22 +30,22 @@ Think of this like **building a house**:
 
 ## Tasks
 
-* Create Next.js app (App Router)
-* Install:
+- Create Next.js app (App Router)
+- Install:
+  - firebase
+  - tailwindcss
+  - framer-motion
 
-  * firebase
-  * tailwindcss
-  * framer-motion
-* Setup Tailwind (dark mode)
+- Setup Tailwind (dark mode)
 
 ## Output
 
-* Running app with styling
+- Running app with styling
 
 ## ✅ Check
 
-* App runs without errors
-* Tailwind works
+- App runs without errors
+- Tailwind works
 
 ---
 
@@ -53,12 +53,12 @@ Think of this like **building a house**:
 
 ## Tasks
 
-* Create Firebase project
-* Enable:
+- Create Firebase project
+- Enable:
+  - Authentication (Email/Password)
+  - Firestore
 
-  * Authentication (Email/Password)
-  * Firestore
-* Create `/lib/firebase.ts`
+- Create `/lib/firebase.ts`
 
 ## Example
 
@@ -70,7 +70,7 @@ import { getFirestore } from "firebase/firestore";
 
 ## ✅ Check
 
-* Can add/read a Firestore document
+- Can add/read a Firestore document
 
 ---
 
@@ -78,27 +78,27 @@ import { getFirestore } from "firebase/firestore";
 
 ## Tasks
 
-* Login/Register UI
-* Store user in Firestore
-* Add role:
+- Login/Register UI
+- Store user in Firestore
+- Add role:
+  - mentor
+  - mentee
+  - admin
 
-  * mentor
-  * mentee
-  * admin
-* Create `useAuth` hook
-* Redirect based on role
+- Create `useAuth` hook
+- Redirect based on role
 
 ## Example
 
 ```ts
-if(user.role === "mentor") router.push("/dashboard");
+if (user.role === "mentor") router.push("/dashboard");
 ```
 
 ## ✅ Check
 
-* Login works
-* Role persists
-* Routes protected
+- Login works
+- Role persists
+- Routes protected
 
 ---
 
@@ -106,12 +106,12 @@ if(user.role === "mentor") router.push("/dashboard");
 
 ## Tasks
 
-* Create dashboard layout
-* Show:
+- Create dashboard layout
+- Show:
+  - user info
+  - role
 
-  * user info
-  * role
-* Fetch users list
+- Fetch users list
 
 ## Analogy
 
@@ -119,15 +119,52 @@ Like a **control panel**—you see your system state.
 
 ## ✅ Check
 
-* Mentor sees mentees
-* Mentee sees basic dashboard
+- Mentor sees mentees
+- Mentee sees basic dashboard
 
 ---
 
-# 🔗 PHASE 4 — ADMIN-CONTROLLED PAIRING SYSTEM (CRITICAL)
+# 🔗 PHASE 4 — ADMIN-CONTROLLED PAIRING SYSTEM (CRITICAL) ✅ COMPLETE
 
 ## 🎯 Objective
+
 Implement a **strict 1:1 mentor–mentee pairing system** where **ONLY ADMIN can assign relationships**.
+
+---
+
+## ✅ IMPLEMENTATION COMPLETED
+
+### Files Created
+
+- `hooks/usePairing.tsx` - Pairing logic with Firestore transactions
+- `components/AdminPairing.tsx` - Admin UI for creating/managing pairings
+- Updated `app/dashboard/page.tsx` - Added Phase 4 section
+
+### Features Implemented
+
+✅ Admin-only pairing interface  
+✅ Create mentor → mentee pairs (1:1)  
+✅ Remove existing pairings  
+✅ Firestore transactions for data consistency  
+✅ Real-time pairing display  
+✅ Error handling for duplicate assignments  
+✅ Dashboard integration showing pairing status
+
+### Core Rules Enforced (Transactions)
+
+```ts
+1. Mentor cannot have multiple mentees
+2. Mentee cannot have multiple mentors
+3. No self-assignment
+4. Only admin can modify pairings
+```
+
+### Dashboard Changes
+
+- Admin sees AdminPairing component with full UI
+- Mentors see their assigned mentee
+- Mentees see their assigned mentor
+- Pairing status shown in Role Details card
 
 ---
 
@@ -136,17 +173,19 @@ Implement a **strict 1:1 mentor–mentee pairing system** where **ONLY ADMIN can
 ## Admin (ONLY AUTHORIZED ROLE)
 
 ### Capabilities
-- View all mentors
-- View all mentees
-- Assign mentor → mentee (1:1)
-- Reassign if needed
+
+- ✅ View all mentors
+- ✅ View all mentees
+- ✅ Assign mentor → mentee (1:1)
+- ✅ Reassign if needed
 
 ---
 
 ## Mentor
 
 ### Capabilities
-- View assigned mentee ONLY
+
+- View assigned mentee (displayed in dashboard)
 - Cannot assign or modify pairing
 
 ---
@@ -154,87 +193,82 @@ Implement a **strict 1:1 mentor–mentee pairing system** where **ONLY ADMIN can
 ## Mentee
 
 ### Capabilities
-- View assigned mentor ONLY
+
+- View assigned mentor (displayed in dashboard)
 - Cannot request or change pairing
 
 ---
 
-# ⚠️ CORE RULES (STRICT)
+# 📅 PHASE 5 — CALL SCHEDULING ✅ COMPLETE
 
-- One mentor → one mentee
-- One mentee → one mentor
-- No duplicate assignments
-- No self-assignment
-- Only admin can write pairing data
+## 🎯 Objective
+
+Implement call scheduling with proper validation and role-based permissions.
 
 ---
 
-# 🧠 DATA CONSISTENCY LOGIC (MANDATORY)
+## ✅ IMPLEMENTATION COMPLETED
 
-Use **Firestore Transaction** to ensure atomic updates:
+### Files Created
 
-```ts
-// Transaction Logic
+- `hooks/useScheduling.ts` - Scheduling logic with validations
+- `components/CallScheduling.tsx` - Scheduling UI and display
+- Updated `app/dashboard/page.tsx` - Added Phase 5 section
 
-1. Check mentor already has mentee?
-   → if yes, block
+### Features Implemented
 
-2. Check mentee already has mentor?
-   → if yes, block
+✅ Mentor-only schedule creation form  
+✅ Date, time, and duration selection  
+✅ Optional notes field  
+✅ Past time validation  
+✅ Overlap detection for mentor schedules  
+✅ Status tracking (scheduled, ongoing, completed, missed, cancelled)  
+✅ Mentee schedule viewing (read-only)  
+✅ Cancel schedule functionality  
+✅ Real-time schedule list display  
+✅ Firestore collection: "schedules"
 
-3. Update mentor:
-   menteeIds = [menteeId]
-
-4. Update mentee:
-   mentorId = mentorId
-
-# 📅 PHASE 5 — CALL SCHEDULING
-
-## Tasks
-
-* Create schedule form:
-
-  * Date
-  * Time
-  * Duration
-
-### Mentor
-
-* Schedule call
-* Cancel / Reschedule
-
-### Mentee
-
-* View schedules
-
----
-
-## Firestore Schema
+### Firestore Schema
 
 ```ts
+schedules collection:
 {
-  mentorId,
-  menteeId,
-  scheduledAt,
-  duration,
-  status
+  id: string;              // auto-generated
+  mentorId: string;        // mentor UID
+  menteeId: string;        // mentee UID
+  scheduledAt: Date;       // call time (Timestamp)
+  duration: number;        // minutes
+  status: string;          // scheduled|ongoing|completed|missed|cancelled
+  createdAt: Date;         // when created (Timestamp)
+  notes?: string;          // optional notes
 }
 ```
 
----
+### Validation Rules
 
-## Rules
+```ts
+1. No past time - Cannot schedule in the past
+2. No overlapping schedules - Mentor cannot have conflicting calls
+3. Requires pairing - User must be paired with counterpart
+4. Mentor-only creation - Only mentors can create schedules
+5. Mentee-read-only - Mentees can only view
+```
 
-* No past time
-* No overlapping schedules
+### Role-Based Features
 
-## Analogy
+| Role   | Create | View | Update | Cancel |
+| ------ | ------ | ---- | ------ | ------ |
+| Mentor | ✅     | ✅   | ✅     | ✅     |
+| Mentee | ❌     | ✅   | ❌     | ❌     |
+| Admin  | ✅     | ✅   | ✅     | ✅     |
 
-Like **booking a meeting room**—time must be valid and free.
+### Dashboard Changes
 
-## ✅ Check
-
-* Schedule visible to both users instantly
+- Schedule form visible only to mentors with paired mentees
+- Schedule list shown to both mentors and mentees
+- Status badges with color coding
+- Cancel button for pending/ongoing calls
+- Real-time updates after scheduling
 
 ---
 
@@ -242,9 +276,9 @@ Like **booking a meeting room**—time must be valid and free.
 
 ## Tasks
 
-* Countdown timer
-* Enable "Join Call" button at correct time
-* Mark missed if not joined
+- Countdown timer
+- Enable "Join Call" button at correct time
+- Mark missed if not joined
 
 ## Flow
 
@@ -255,7 +289,7 @@ scheduled → missed
 
 ## ✅ Check
 
-* Join button activates correctly
+- Join button activates correctly
 
 ---
 
@@ -263,13 +297,13 @@ scheduled → missed
 
 ## Tasks
 
-* Create peer connection
-* Get microphone access
+- Create peer connection
+- Get microphone access
 
 ## Example
 
 ```ts
-navigator.mediaDevices.getUserMedia({ audio: true })
+navigator.mediaDevices.getUserMedia({ audio: true });
 ```
 
 ## Analogy
@@ -278,8 +312,8 @@ Like **opening a communication channel** before speaking.
 
 ## ✅ Check
 
-* Audio permission works
-* No null connection errors
+- Audio permission works
+- No null connection errors
 
 ---
 
@@ -289,16 +323,16 @@ Like **opening a communication channel** before speaking.
 
 ### Caller
 
-* Create offer
-* Store in Firestore
+- Create offer
+- Store in Firestore
 
 ### Receiver
 
-* Listen → create answer
+- Listen → create answer
 
 ### Both
 
-* Exchange ICE candidates
+- Exchange ICE candidates
 
 ---
 
@@ -314,7 +348,7 @@ Like **two people exchanging phone numbers before calling**.
 
 ## ✅ Check
 
-* Two users can connect
+- Two users can connect
 
 ---
 
@@ -328,16 +362,15 @@ calling → ringing → accepted → ongoing → ended → missed
 
 ## Tasks
 
-* Incoming call UI
-* Accept / Reject
-* Cleanup:
-
-  * stop tracks
-  * close connection
+- Incoming call UI
+- Accept / Reject
+- Cleanup:
+  - stop tracks
+  - close connection
 
 ## ✅ Check
 
-* Calls connect & end properly
+- Calls connect & end properly
 
 ---
 
@@ -345,12 +378,11 @@ calling → ringing → accepted → ongoing → ended → missed
 
 ## Tasks
 
-* Create callSessions entry
-* Track:
-
-  * startTime
-  * endTime
-  * duration
+- Create callSessions entry
+- Track:
+  - startTime
+  - endTime
+  - duration
 
 ## Analogy
 
@@ -358,7 +390,7 @@ Like **call history in your phone**.
 
 ## ✅ Check
 
-* Accurate call logs stored
+- Accurate call logs stored
 
 ---
 
@@ -366,14 +398,14 @@ Like **call history in your phone**.
 
 ## Features
 
-* Timer
-* Mute toggle
-* Video toggle
-* End call
+- Timer
+- Mute toggle
+- Video toggle
+- End call
 
 ## ✅ Check
 
-* UI responds correctly
+- UI responds correctly
 
 ---
 
@@ -381,14 +413,14 @@ Like **call history in your phone**.
 
 ## Tasks
 
-* Dark theme
-* Glassmorphism cards
-* Animations (Framer Motion)
+- Dark theme
+- Glassmorphism cards
+- Animations (Framer Motion)
 
 ## ✅ Check
 
-* Smooth UX
-* Responsive
+- Smooth UX
+- Responsive
 
 ---
 
@@ -396,19 +428,19 @@ Like **call history in your phone**.
 
 ## Handle
 
-* Firebase errors
-* WebRTC failures
-* Media permissions
+- Firebase errors
+- WebRTC failures
+- Media permissions
 
 ## Add
 
-* try/catch
-* Loading states
-* Error UI
+- try/catch
+- Loading states
+- Error UI
 
 ## ✅ Check
 
-* No crashes
+- No crashes
 
 ---
 
@@ -416,16 +448,16 @@ Like **call history in your phone**.
 
 ## Test Scenarios
 
-* Pairing works
-* Scheduling works
-* Calls connect
-* Missed calls handled
-* Tracking accurate
+- Pairing works
+- Scheduling works
+- Calls connect
+- Missed calls handled
+- Tracking accurate
 
 ## ✅ Final Check
 
-* No runtime errors
-* Full system functional
+- No runtime errors
+- Full system functional
 
 ---
 
@@ -435,11 +467,7 @@ Like **call history in your phone**.
 
 ```ts
 {
-  id,
-  name,
-  role,
-  mentorId,
-  menteeIds
+  (id, name, role, mentorId, menteeIds);
 }
 ```
 
@@ -447,12 +475,7 @@ Like **call history in your phone**.
 
 ```ts
 {
-  scheduleId,
-  mentorId,
-  menteeId,
-  scheduledAt,
-  duration,
-  status
+  (scheduleId, mentorId, menteeId, scheduledAt, duration, status);
 }
 ```
 
@@ -460,13 +483,7 @@ Like **call history in your phone**.
 
 ```ts
 {
-  callId,
-  mentorId,
-  menteeId,
-  startTime,
-  endTime,
-  duration,
-  status
+  (callId, mentorId, menteeId, startTime, endTime, duration, status);
 }
 ```
 

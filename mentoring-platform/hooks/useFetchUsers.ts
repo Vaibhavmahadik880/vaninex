@@ -31,7 +31,8 @@ export function useFetchUsers(role?: string, filters?: QueryConstraint[]) {
         setLoading(true);
         setError(null);
 
-        let q: any = collection(db, "users");
+        let q: ReturnType<typeof query> | ReturnType<typeof collection> =
+          collection(db, "users");
 
         if (role) {
           q = query(
@@ -45,21 +46,22 @@ export function useFetchUsers(role?: string, filters?: QueryConstraint[]) {
 
         const snapshot = await getDocs(q);
         const usersList: UserProfile[] = snapshot.docs.map((doc) => {
-          const data = doc.data() as any;
+          const data = doc.data() as Record<string, unknown>;
           return {
             id: doc.id,
             email: data.email || "",
             fullName: data.fullName || data.email?.split("@")[0] || "User",
             role: data.role || "mentee",
             createdAt: data.createdAt?.toDate() || new Date(),
-            menteeIds: data.menteeIds || [],
-            mentorId: data.mentorId || null,
+            menteeIds: (data.menteeIds as string[]) || [],
+            mentorId: (data.mentorId as string | null) || null,
           };
         });
 
         setUsers(usersList);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
         console.error("Error fetching users:", err);
       } finally {
         setLoading(false);

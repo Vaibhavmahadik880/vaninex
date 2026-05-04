@@ -16,12 +16,17 @@ export default function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"mentor" | "mentee">("mentee");
+  const [role, setRole] = useState<"mentor" | "mentee" | "admin">("mentee");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
+  const [showAdminSecret, setShowAdminSecret] = useState(false);
   const router = useRouter();
   const googleProvider = new GoogleAuthProvider();
+
+  // Admin secret - set this to something secure in .env
+  const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || "admin123";
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
