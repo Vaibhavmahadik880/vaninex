@@ -169,8 +169,9 @@ export default function DashboardPage() {
               <p>🟢 Authentication Active</p>
               <p>🟢 Admin Pairing System</p>
               <p>🟢 Call Scheduling Ready</p>
+              <p>🟢 WebRTC Foundation Active</p>
               <p className="text-xs text-purple-100 mt-4">
-                Phase 5: Call Scheduling Complete
+                Phase 7: WebRTC Foundation Complete
               </p>
             </div>
           </div>
@@ -197,56 +198,6 @@ export default function DashboardPage() {
               <MenteeList mentees={mentees} loading={false} />
             </div>
           )}
-
-          {/* Info Panel */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-2xl font-bold mb-4">📋 Next Steps</h3>
-            <div className="space-y-3 text-sm text-gray-700">
-              {role === "admin" ? (
-                <>
-                  <p>
-                    ✅ <strong>Phase 4:</strong> Admin Pairing System - Active!
-                  </p>
-                  <p>
-                    ✅ <strong>Phase 5:</strong> Call Scheduling - Active!
-                  </p>
-                  <p>
-                    ⏳ <strong>Phase 6+:</strong> WebRTC calling setup
-                  </p>
-                </>
-              ) : role === "mentor" ? (
-                <>
-                  <p>
-                    ✅ <strong>Phase 4:</strong>{" "}
-                    {pairedMentee
-                      ? "Mentee assigned!"
-                      : "Waiting for pairing..."}
-                  </p>
-                  <p>
-                    ✅ <strong>Phase 5:</strong> Schedule calls with mentee
-                  </p>
-                  <p>
-                    ⏳ <strong>Phase 6+:</strong> Start WebRTC calls
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p>
-                    ✅ <strong>Phase 4:</strong>{" "}
-                    {pairedMentor
-                      ? "Mentor assigned!"
-                      : "Waiting for pairing..."}
-                  </p>
-                  <p>
-                    ✅ <strong>Phase 5:</strong> Join scheduled calls
-                  </p>
-                  <p>
-                    ⏳ <strong>Phase 6+:</strong> Join WebRTC calls
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* PHASE 4: ADMIN PAIRING SYSTEM */}
@@ -285,7 +236,7 @@ export default function DashboardPage() {
         {/* Feature Roadmap */}
         <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-2xl font-bold mb-6">🗺️ Feature Roadmap</h3>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-7 gap-4">
             <div className="text-center">
               <div className="bg-green-100 p-4 rounded-lg mb-2">✅</div>
               <p className="font-semibold text-sm">Phase 0-2</p>
@@ -307,9 +258,19 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-500">Scheduling</p>
             </div>
             <div className="text-center">
-              <div className="bg-gray-100 p-4 rounded-lg mb-2">⏳</div>
-              <p className="font-semibold text-sm">Phase 6+</p>
+              <div className="bg-green-100 p-4 rounded-lg mb-2">✅</div>
+              <p className="font-semibold text-sm">Phase 6</p>
+              <p className="text-xs text-gray-500">Reminders</p>
+            </div>
+            <div className="text-center">
+              <div className="bg-green-100 p-4 rounded-lg mb-2">✅</div>
+              <p className="font-semibold text-sm">Phase 7</p>
               <p className="text-xs text-gray-500">WebRTC</p>
+            </div>
+            <div className="text-center">
+              <div className="bg-gray-100 p-4 rounded-lg mb-2">⏳</div>
+              <p className="font-semibold text-sm">Phase 8+</p>
+              <p className="text-xs text-gray-500">Signaling</p>
             </div>
           </div>
         </div>

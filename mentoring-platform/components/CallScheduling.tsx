@@ -6,6 +6,7 @@ import { useScheduling } from "@/hooks/useScheduling";
 import { UserProfile } from "@/hooks/useFetchUsers";
 import { readDate } from "@/lib/firestoreData";
 import { motion } from "framer-motion";
+import WebRTCCall from "./WebRTCCall";
 
 interface CallSchedulingProps {
   currentUserId: string;
@@ -37,6 +38,7 @@ export default function CallScheduling({
     fetchSchedules,
     createSchedule,
     cancelSchedule,
+    updateScheduleStatus,
     clearSchedules,
   } = useScheduling();
   const { register, handleSubmit, reset } = useForm<ScheduleFormValues>({
@@ -50,6 +52,11 @@ export default function CallScheduling({
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [countdowns, setCountdowns] = useState<Record<string, string>>({});
+  const [joinableSchedules, setJoinableSchedules] = useState<Set<string>>(
+    new Set(),
+  );
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
 
   useEffect(() => {
     if (pairedUser && isScheduleReaderRole(currentUserRole)) {
@@ -64,6 +71,70 @@ export default function CallScheduling({
     fetchSchedules,
     clearSchedules,
   ]);
+
+  // Countdown and status management effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const newCountdowns: Record<string, string> = {};
+      const newJoinable = new Set<string>();
+
+      schedules.forEach((schedule) => {
+        const scheduledTime = readDate(schedule.scheduledAt);
+        const timeDiff = scheduledTime.getTime() - now.getTime();
+
+        if (schedule.status === "scheduled") {
+          if (timeDiff <= 0) {
+            // Call time has arrived - enable join button
+            newJoinable.add(schedule.id);
+            newCountdowns[schedule.id] = "Ready to join!";
+          } else if (timeDiff <= 5 * 60 * 1000) {
+            // Within 5 minutes
+            // Show countdown
+            const minutes = Math.floor(timeDiff / (1000 * 60));
+            const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+            newCountdowns[schedule.id] =
+              `${minutes}:${seconds.toString().padStart(2, "0")}`;
+          } else {
+            // Show time until call
+            const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+            const minutes = Math.floor(
+              (timeDiff % (1000 * 60 * 60)) / (1000 * 60),
+            );
+            if (hours > 0) {
+              newCountdowns[schedule.id] = `${hours}h ${minutes}m`;
+            } else {
+              newCountdowns[schedule.id] = `${minutes}m`;
+            }
+          }
+
+          // Check if call was missed (15 minutes past scheduled time)
+          if (timeDiff <= -15 * 60 * 1000) {
+            updateScheduleStatus(schedule.id, "missed");
+          }
+        } else if (schedule.status === "ongoing") {
+          const endTime =
+            scheduledTime.getTime() + schedule.duration * 60 * 1000;
+          const timeUntilEnd = endTime - now.getTime();
+
+          if (timeUntilEnd <= 0) {
+            // Call should be completed
+            updateScheduleStatus(schedule.id, "completed");
+          } else {
+            const minutes = Math.floor(timeUntilEnd / (1000 * 60));
+            const seconds = Math.floor((timeUntilEnd % (1000 * 60)) / 1000);
+            newCountdowns[schedule.id] =
+              `Ongoing - ${minutes}:${seconds.toString().padStart(2, "0")} left`;
+          }
+        }
+      });
+
+      setCountdowns(newCountdowns);
+      setJoinableSchedules(newJoinable);
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval);
+  }, [schedules, updateScheduleStatus]);
 
   const refreshSchedules = async () => {
     if (isScheduleReaderRole(currentUserRole)) {
@@ -136,6 +207,28 @@ export default function CallScheduling({
     }
   };
 
+  const handleJoinCall = async (scheduleId: string) => {
+    setActiveCallId(scheduleId);
+  };
+
+  const handleCallStart = () => {
+    // Call has started via WebRTC
+    console.log("WebRTC call started for schedule:", activeCallId);
+  };
+
+  const handleCallEnd = async () => {
+    if (activeCallId) {
+      const result = await updateScheduleStatus(activeCallId, "completed");
+      if (result.success) {
+        setSuccessMessage("Call completed!");
+        await refreshSchedules();
+      } else {
+        setErrorMessage(result.error || "Failed to update call status");
+      }
+    }
+    setActiveCallId(null);
+  };
+
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "scheduled":
@@ -159,6 +252,12 @@ export default function CallScheduling({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      {/* WebRTC Call Modal */}
+      <WebRTCCall
+        isCallActive={activeCallId !== null}
+        onCallStart={handleCallStart}
+        onCallEnd={handleCallEnd}
+      />
       {successMessage && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -185,7 +284,10 @@ export default function CallScheduling({
             Schedule Call
           </h3>
 
-          <form onSubmit={handleSubmit(handleScheduleCall)} className="space-y-4">
+          <form
+            onSubmit={handleSubmit(handleScheduleCall)}
+            className="space-y-4"
+          >
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -293,6 +395,11 @@ export default function CallScheduling({
                           Notes: {schedule.notes}
                         </p>
                       )}
+                      {countdowns[schedule.id] && (
+                        <p className="text-sm font-medium text-blue-600 mt-1">
+                          {countdowns[schedule.id]}
+                        </p>
+                      )}
                     </div>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadgeColor(
@@ -303,17 +410,30 @@ export default function CallScheduling({
                     </span>
                   </div>
 
-                  {(schedule.status === "scheduled" ||
-                    schedule.status === "ongoing") &&
-                    currentUserRole === "mentor" && (
-                      <button
-                        type="button"
-                        onClick={() => handleCancelSchedule(schedule.id)}
-                        className="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold transition"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                  <div className="flex gap-2 mt-3">
+                    {joinableSchedules.has(schedule.id) &&
+                      schedule.status === "scheduled" && (
+                        <button
+                          type="button"
+                          onClick={() => handleJoinCall(schedule.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                        >
+                          Join Call
+                        </button>
+                      )}
+
+                    {(schedule.status === "scheduled" ||
+                      schedule.status === "ongoing") &&
+                      currentUserRole === "mentor" && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelSchedule(schedule.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-sm font-semibold transition"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                  </div>
                 </motion.div>
               );
             })}
