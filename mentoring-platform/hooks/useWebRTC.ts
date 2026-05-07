@@ -49,7 +49,7 @@ export function useWebRTC(
   // Signaling refs
   const roomRef = useRef<DocumentReference | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   useEffect(() => {
     if (roomId) {
       roomRef.current = doc(collection(db, "webrtc_rooms"), roomId);
@@ -221,6 +221,15 @@ export function useWebRTC(
               new RTCSessionDescription(data.offer),
             );
 
+            if (pendingCandidatesRef.current.length > 0) {
+              await Promise.all(
+                pendingCandidatesRef.current.map((candidate) =>
+                  pc.addIceCandidate(new RTCIceCandidate(candidate)),
+                ),
+              );
+              pendingCandidatesRef.current = [];
+            }
+
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
@@ -244,6 +253,15 @@ export function useWebRTC(
             await pc.setRemoteDescription(
               new RTCSessionDescription(data.answer),
             );
+
+            if (pendingCandidatesRef.current.length > 0) {
+              await Promise.all(
+                pendingCandidatesRef.current.map((candidate) =>
+                  pc.addIceCandidate(new RTCIceCandidate(candidate)),
+                ),
+              );
+              pendingCandidatesRef.current = [];
+            }
           }
         },
       );
@@ -258,14 +276,18 @@ export function useWebRTC(
               if (candidateData.userId !== userId) {
                 console.log("Received ICE candidate from remote peer");
                 const pc = peerConnectionRef.current;
-                if (pc && pc.remoteDescription) {
-                  await pc.addIceCandidate(
-                    new RTCIceCandidate({
-                      candidate: candidateData.candidate,
-                      sdpMLineIndex: candidateData.sdpMLineIndex,
-                      sdpMid: candidateData.sdpMid,
-                    }),
-                  );
+                if (pc) {
+                  const candidate = {
+                    candidate: candidateData.candidate,
+                    sdpMLineIndex: candidateData.sdpMLineIndex,
+                    sdpMid: candidateData.sdpMid,
+                  };
+
+                  if (pc.remoteDescription && pc.remoteDescription.type) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                  } else {
+                    pendingCandidatesRef.current.push(candidate);
+                  }
                 }
               }
             }
